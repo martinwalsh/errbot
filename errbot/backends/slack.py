@@ -301,6 +301,13 @@ class SlackBackend(ErrBot):
         self.md = slack_markdown_converter(compact)
         self._register_identifiers_pickling()
 
+        self.event_handlers = {
+            'hello': self._hello_event_handler,
+            'presence_change': self._presence_change_event_handler,
+            'message': self._message_event_handler,
+            'member_joined_channel': self._member_joined_channel_event_handler,
+        }
+
     def api_call(self, method, data=None, raise_errors=True):
         """
         Make an API call to the Slack API and return response data.
@@ -390,6 +397,9 @@ class SlackBackend(ErrBot):
         else:
             raise Exception('Connection failed, invalid token ?')
 
+    def add_event_handler(self, name, cb):
+        self.event_handlers[name] = cb
+
     def _dispatch_slack_message(self, message):
         """
         Process an incoming message from slack.
@@ -401,14 +411,7 @@ class SlackBackend(ErrBot):
 
         event_type = message['type']
 
-        event_handlers = {
-            'hello': self._hello_event_handler,
-            'presence_change': self._presence_change_event_handler,
-            'message': self._message_event_handler,
-            'member_joined_channel': self._member_joined_channel_event_handler,
-        }
-
-        event_handler = event_handlers.get(event_type)
+        event_handler = self.event_handlers.get(event_type)
 
         if event_handler is None:
             log.debug('No event handler available for %s, ignoring this event', event_type)
